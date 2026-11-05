@@ -20,9 +20,27 @@
 
   outputs =
     {
+      nixpkgs,
       flake-utils,
       helper,
       ...
     }@inputs:
-    flake-utils.lib.eachDefaultSystem (system: (helper.lib.rust.helper inputs system ./. { }).outputs);
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+        outputs = (helper.lib.rust.helper inputs system ./. { }).outputs;
+        webRoot = pkgs.runCommand "build-web-root" { } ''
+          mkdir $out
+          cp ${./index.html} $out/index.html
+        '';
+      in
+      outputs
+      // {
+        packages = {
+          inherit webRoot;
+          server = outputs.packages.default;
+        };
+      }
+    );
 }
