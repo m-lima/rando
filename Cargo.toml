@@ -9,6 +9,7 @@ axum = "0.8.9"
 clap = { version = "4.6.7", features = ["derive"] }
 paste = "1.0.15"
 rand = "0.10.3"
+serde = { version = "1.0.229", features = ["serde_derive"] }
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }
 tower-layer = { version = "0.3.3", default-features = false }
 tower-service = { version = "0.3.3", default-features = false }
