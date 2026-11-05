@@ -5,6 +5,7 @@ use anyhow::Context;
 mod args;
 mod logger;
 mod server;
+mod shutdown;
 
 type Result<T = ()> = anyhow::Result<T>;
 
@@ -36,7 +37,7 @@ fn main() -> Result {
     tracing::info!(
         verbosity = %args.verbosity,
         external = %args.external,
-        port = %args.port,
+        socket = %args.socket,
         "Initializing server"
     );
 
@@ -48,12 +49,28 @@ fn main() -> Result {
         .context("while building the runtime")?;
 
     tokio::runtime::Runtime::block_on(&runtime, async {
-        let listener = tokio::net::TcpListener::bind(("0.0.0.0", u16::from(args.port)))
-            .await
-            .context("while binding to socket")?;
-        axum::serve(listener, app.into_make_service())
-            .await
-            .context("while serving on socket")
+        let shutdown = shutdown::Shutdown::new()?;
+
+        match &args.socket {
+            args::Socket::Port(port) => {
+                let address = std::net::SocketAddrV4::new(std::net::Ipv4Addr::UNSPECIFIED, *port);
+                let listener = tokio::net::TcpListener::bind(address)
+                    .await
+                    .context("while binding to socket")?;
+                axum::serve(listener, app.into_make_service())
+                    .with_graceful_shutdown(shutdown)
+                    .await
+                    .context("while serving on socket")
+            }
+            args::Socket::Unix(path) => {
+                let listener =
+                    tokio::net::UnixListener::bind(path).context("while binding to socket")?;
+                axum::serve(listener, app.into_make_service())
+                    .with_graceful_shutdown(shutdown)
+                    .await
+                    .context("while serving on socket")
+            }
+        }
     })
     .context("while executing async context")
 }
