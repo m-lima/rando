@@ -29,7 +29,12 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        outputs = (helper.lib.rust.helper inputs system ./. { }).outputs;
+        outputs =
+          (helper.lib.rust.helper inputs system ./. {
+            formatters = {
+              prettier.enable = true;
+            };
+          }).outputs;
         webRoot = pkgs.runCommand "build-web-root" { } ''
           mkdir $out
           cp ${./index.html} $out/index.html
